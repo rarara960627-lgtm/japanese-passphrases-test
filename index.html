@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>卒業研究 - 記憶負荷実験</title>
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body>
+
+    <div id="experiment-container">
+        <h1>記憶負荷実験</h1>
+
+        <section id="intro-step" class="step active">
+            <h2>参加者情報</h2>
+            <p>ご協力ありがとうございます。以下のフォームにあなたの**参加者ID**を入力してください。</p>
+            <div class="input-group">
+                <label for="participant-id">参加者ID (例: P001):</label>
+                <input type="text" id="participant-id" placeholder="IDを入力" required>
+            </div>
+            <button onclick="startExperiment()">実験を開始する</button>
+        </section>
+
+        <section id="memorize-step" class="step">
+            <h2>【記憶フェーズ】パスフレーズを記憶してください</h2>
+            <p>以下の**<span id="current-language"></span>語**のパスフレーズを、<span class="highlight-text">完全に覚えるまで</span>記憶してください。</p>
+            
+            <div id="passphrase-display-box">
+                <p id="passphrase-display">パスフレーズを読み込み中...</p>
+            </div>
+
+            <button onclick="endMemorize()" id="end-mem-btn" disabled>記憶完了</button>
+            <p class="timer-info">※このボタンを押すまでの時間を計測します。</p>
+        </section>
+
+        <section id="distractor-step" class="step">
+            <h2>【妨害タスク】</h2>
+            <p>集中して以下の問題を解いてください。**30秒後**に自動で次のステップに進みます。</p>
+            <div class="task-content">
+                <p>以下の計算をしてください: <span class="highlight-text">34 + 57 = ?</span></p>
+                <p>残り時間: <span id="distractor-timer">30</span>秒</p>
+            </div>
+        </section>
+
+        <section id="recall-step" class="step">
+            <h2>【再生フェーズ】パスフレーズの再入力</h2>
+            <p>記憶したパスフレーズを、正確に入力してください。</p>
+            <p class="error-status">残りエラー許容回数: <span id="error-count-display">5</span>回</p>
+            <input type="text" id="recall-input" placeholder="スペース区切りで入力してください" required>
+            <button onclick="checkPassphrase()" id="check-btn">確認する</button>
+            <p id="error-message" class="error"></p>
+        </section>
+
+        <section id="finish-step" class="step">
+            <h2>実験終了です</h2>
+            <div id="finish-message">
+                <p>データ送信処理中です...</p>
+            </div>
+        </section>
+        
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
