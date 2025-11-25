@@ -11,7 +11,7 @@ const MAX_ERRORS = 5;
 
 // !!! 【重要】BASE_API_URLをあなたのPythonAnywhereのURLに置き換える !!!
 // -----------------------------------------------------------------
-const BASE_API_URL = 'https://[あなたのユーザー名].pythonanywhere.com'; 
+const BASE_API_URL = 'https://github.com/rarara960627-lgtm/japanese-passphrases-test'; 
 // -----------------------------------------------------------------
 
 
@@ -191,4 +191,5 @@ async function handleFinalDataSubmit() {
         console.error('ネットワークエラー:', error);
         messageDisplay.innerHTML = '<h2>❌ 通信エラー</h2><p>サーバーとの接続エラーが発生しました。インターネット接続を確認し、研究者に連絡してください。</p>';
     }
+
 }
