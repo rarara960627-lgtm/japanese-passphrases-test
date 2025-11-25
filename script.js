@@ -11,7 +11,7 @@ const MAX_ERRORS = 5;
 
 // !!! 【重要】BASE_API_URLをあなたのPythonAnywhereのURLに置き換える !!!
 // -----------------------------------------------------------------
-const BASE_API_URL = 'https://github.com/rarara960627-lgtm/japanese-passphrases-test'; 
+const BASE_API_URL = 'https://raimu7260.pythonanywhere.com';
 // -----------------------------------------------------------------
 
 
@@ -193,3 +193,4 @@ async function handleFinalDataSubmit() {
     }
 
 }
+
