@@ -185,19 +185,15 @@ function startRecallStep(language) {
     console.log(`[${language}] 再生計測開始`);
 }
 
-// 🚨 変更 3: 一文字ごとの判定関数は削除 🚨
-// function handleRecallInput(e) { ... }
-
 
 // --- ヘルパー関数: スペースを正規化して比較 ---
 function normalizePassphrase(passphrase) {
     // 1. 全角スペースを半角に置換
-    // 2. 両端の半角スペースをトリム
-    // 3. すべての半角スペースを削除（単語のみの比較にする場合）
-    // 今回は「半角、全角どちらも許容」とのことなので、スペースを削除して単語の並び順のみをチェックします。
+    // 2. すべてのスペースを削除（単語の並び順のみをチェック）
+    // 🚨 目的: 半角・全角スペースを許容し、単語の順序のみをチェックする 🚨
     return passphrase
-        .replace(/　/g, ' ') // 全角スペースを半角スペースに
-        .replace(/\s+/g, '') // 連続するスペース、または残ったスペースをすべて削除
+        .replace(/　/g, ' ') // 全角スペースを半角スペースに変換
+        .replace(/\s+/g, '') // 連続するスペース、または残ったスペースをすべて削除 
         .trim();
 }
 
@@ -275,7 +271,10 @@ function checkPassphrase() {
         
         document.getElementById('error-count-display').textContent = MAX_ERRORS - currentErrors;
         document.getElementById('recall-input').value = ''; // 入力欄をクリア
-        document.getElementById('error-message').textContent = `❌ 間違いです。残り試行回数: ${MAX_ERRORS - currentErrors}`;
+        
+        // 🚨 変更 9: エラーメッセージから「文字が異なります」のニュアンスを削除 🚨
+        // 以前の修正で「文字が異なります」は削除されていますが、意図したシンプルさであることを再確認
+        document.getElementById('error-message').textContent = `❌ 間違いです。再入力してください。残り試行回数: ${MAX_ERRORS - currentErrors}`;
         document.getElementById('error-message').style.color = 'red';
     }
 }
