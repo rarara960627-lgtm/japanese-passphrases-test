@@ -9,10 +9,9 @@ let recallStartTime = 0; 
 let currentErrors = 0;
 const MAX_ERRORS = 5;
 
-// 🚨 修正点 1: 入力ミス記録用の配列を追加 🚨
+// 🚨 変更: 入力ミス記録用の配列は維持しますが、記録ロジックを変更します 🚨
 let errorLog = []; 
-let currentInputIndex = 0; // 現在入力しているパスフレーズの文字インデックス
-let recallInputTimer = null; // 入力開始からのタイマーID
+// 🚨 変更: 不要になった変数は削除します (currentInputIndex, recallInputTimer) 🚨
 
 // !!! 【重要】BASE_API_URLをあなたのPythonAnywhereのURLに置き換える !!!
 // -----------------------------------------------------------------
@@ -60,7 +59,9 @@ function disableCopyPaste(elementId) {
 function startExperiment() {
     participantId = document.getElementById('participant-id').value.trim();
     if (!participantId || participantId.length < 3) {
-        alert("参加者IDを正しく入力してください。");
+        // alert() の代わりにカスタムモーダルまたはメッセージボックスを使用することが推奨されます
+        // ただし、今回は既存のコードを踏襲し、alert() のままにします。
+        alert("参加者IDを正しく入力してください。"); 
         return;
     }
     
@@ -94,7 +95,6 @@ async function startMemorizeStep(language) {
     // 記憶ステップ開始時に errorLog をリセット
     currentErrors = 0;
     errorLog = [];
-    currentInputIndex = 0;
 
     currentExperiment = { 
         language: language, 
@@ -124,9 +124,11 @@ async function startMemorizeStep(language) {
 
         } else {
             document.getElementById('passphrase-display').textContent = `エラー: ${data.error}`;
+            // alert() の代わりにカスタムモーダルまたはメッセージボックスを使用することが推奨されます
             alert(`パスフレーズの取得に失敗しました: ${data.error}`);
         }
     } catch (error) {
+        // alert() の代わりにカスタムモーダルまたはメッセージボックスを使用することが推奨されます
         alert("サーバーとの通信に失敗しました。URLと接続を確認してください。");
         showStep('intro-step'); // エラー時は導入に戻す
     }
@@ -135,7 +137,9 @@ async function startMemorizeStep(language) {
 /** 記憶完了ボタンが押された時の処理 */
 function endMemorize() {
     const language = currentPassphraseObject.language;
-    const memorizeTime = Date.now() - startTime;
+    
+    // 🚨 変更 1: 記憶時間を秒に変換 🚨
+    const memorizeTime = (Date.now() - startTime) / 1000;
     currentExperiment.memorize_time_ms = memorizeTime;
 
     showStep('distractor-step');
@@ -170,12 +174,10 @@ function startRecallStep(language) {
     document.getElementById('recall-input').value = ''; 
     document.getElementById('error-message').textContent = '';
     
-    // 入力欄にイベントリスナーを追加
+    // 🚨 変更 2: 一文字ごとの判定を削除したため、inputイベントリスナーは不要 🚨
     const recallInput = document.getElementById('recall-input');
-    recallInput.removeEventListener('input', handleRecallInput); // 重複防止
-    recallInput.addEventListener('input', handleRecallInput);
+    recallInput.removeEventListener('input', handleRecallInput);
     
-    currentInputIndex = 0; // 入力インデックスをリセット
     recallInput.focus(); // 入力欄にフォーカス
     
     // 再生時間計測開始
@@ -183,59 +185,34 @@ function startRecallStep(language) {
     console.log(`[${language}] 再生計測開始`);
 }
 
-/** 入力イベントを捕捉し、ミスをリアルタイムで記録する関数 */
-function handleRecallInput(e) {
-    const userInput = e.target.value;
-    const expectedPassphrase = currentPassphraseObject.passphrase;
-    
-    // 現在の入力文字数
-    const inputLength = userInput.length;
-    
-    // 現在の入力インデックス
-    const currentIndex = inputLength - 1;
-    
-    if (currentIndex >= 0) {
-        const inputChar = userInput[currentIndex];
-        const expectedChar = expectedPassphrase[currentIndex];
+// 🚨 変更 3: 一文字ごとの判定関数は削除 🚨
+// function handleRecallInput(e) { ... }
 
-        // 期待される文字長を超えていないか、かつ文字が一致しないかを確認
-        if (currentIndex < expectedPassphrase.length && inputChar !== expectedChar) {
-            // ミスが発生した場合
-            const errorTime = Date.now() - recallStartTime;
-            
-            // エラーログに記録
-            errorLog.push({
-                time_ms: errorTime,
-                input_char: inputChar,
-                expected_char: expectedChar || 'EOS', // 期待される文字がなければ 'EOS' (End of String)
-                current_input_index: currentIndex,
-                current_value: userInput // ミス時点の入力を記録
-            });
-            
-            // 視覚的なエラーフィードバック
-            document.getElementById('error-message').textContent = "❌ 文字が異なります！";
-            document.getElementById('error-message').style.color = 'red';
-            
-            console.log(`[ERROR] Char: ${inputChar}, Expected: ${expectedChar}, Time: ${errorTime}ms`);
 
-        } else if (inputChar === expectedChar) {
-            // 正しい入力の場合、エラーメッセージをクリア
-            document.getElementById('error-message').textContent = "";
-        }
-        // 長すぎる入力は checkPassphrase で処理されるため、ここでは無視
-    }
+// --- ヘルパー関数: スペースを正規化して比較 ---
+function normalizePassphrase(passphrase) {
+    // 1. 全角スペースを半角に置換
+    // 2. 両端の半角スペースをトリム
+    // 3. すべての半角スペースを削除（単語のみの比較にする場合）
+    // 今回は「半角、全角どちらも許容」とのことなので、スペースを削除して単語の並び順のみをチェックします。
+    return passphrase
+        .replace(/　/g, ' ') // 全角スペースを半角スペースに
+        .replace(/\s+/g, '') // 連続するスペース、または残ったスペースをすべて削除
+        .trim();
 }
 
 
 /** 確認ボタンが押された時の処理 (再生テスト) */
 function checkPassphrase() {
     const userInput = document.getElementById('recall-input').value.trim();
-    // スペースの有無も判定に含めるため trim() のみ使用
     const expectedPassphrase = currentPassphraseObject.passphrase;
-    const isCorrect = (userInput === expectedPassphrase);
     const language = currentPassphraseObject.language;
 
-    // 現在のエラーカウントはerrorLogのサイズでなく、試行回数ベースで管理
+    // 🚨 変更 4: 正誤判定は、スペースを無視した文字列で比較 🚨
+    const normalizedUserInput = normalizePassphrase(userInput);
+    const normalizedExpected = normalizePassphrase(expectedPassphrase);
+
+    const isCorrect = (normalizedUserInput === normalizedExpected);
     
     if (isCorrect || currentErrors >= MAX_ERRORS - 1) { // 最後の試行または正解
         
@@ -244,20 +221,29 @@ function checkPassphrase() {
             currentErrors++; 
         }
 
-        // 結果を確定
-        const recallTime = Date.now() - recallStartTime;
+        // 🚨 変更 5: 計測時間を秒に変換 🚨
+        const recallTime = (Date.now() - recallStartTime) / 1000;
         currentExperiment.recall_time_ms = recallTime;
-        currentExperiment.error_count = errorLog.length; // エラーカウントは errorLog のサイズを使用 
+        
+        // 🚨 変更 6: 入力ミス記録を最終試行時に集計 🚨
+        if (!isCorrect) {
+             // 失敗した場合は、現在の入力をログに記録
+             errorLog.push({
+                 time_s: recallTime, // 確認ボタンを押した時点の秒
+                 input_value: userInput, // ユーザーの生入力
+                 attempt: currentErrors // 試行回数
+             });
+        }
+        // error_count は、失敗して記録されたログの数 + 成功したなら 0
+        currentExperiment.error_count = errorLog.length;
         currentExperiment.is_success = isCorrect;
         currentExperiment.passphrase = currentPassphraseObject.passphrase;
-        
-        // error_details として errorLog を追加
         currentExperiment.error_details = errorLog;
         
         allExperimentResults.push(currentExperiment); // 結果をリストに追加
         
         let nextLanguage;
-        // 🚨 修正点 4: 実験フローの変更（en -> jp -> pokemon -> finish） 🚨
+        // 🚨 修正点 7: 実験フローの変更（en -> jp -> pokemon -> finish） 🚨
         if (language === 'en') {
             nextLanguage = 'jp';
         } else if (language === 'jp') {
@@ -277,9 +263,20 @@ function checkPassphrase() {
     } else {
         // 間違い (試行回数を増やす)
         currentErrors++;
+        
+        // 🚨 変更 8: 入力ミスの記録を checkPassphrase の間違い時のみに限定 🚨
+        // 間違いの場合、現在の入力をログに記録
+        const errorTime = (Date.now() - recallStartTime) / 1000;
+        errorLog.push({
+            time_s: errorTime, // 確認ボタンを押した時点の秒
+            input_value: userInput, // ユーザーの生入力
+            attempt: currentErrors // 試行回数
+        });
+        
         document.getElementById('error-count-display').textContent = MAX_ERRORS - currentErrors;
         document.getElementById('recall-input').value = ''; // 入力欄をクリア
-        document.getElementById('error-message').textContent = "❌ 間違いです。再入力してください。";
+        document.getElementById('error-message').textContent = `❌ 間違いです。残り試行回数: ${MAX_ERRORS - currentErrors}`;
+        document.getElementById('error-message').style.color = 'red';
     }
 }
 
