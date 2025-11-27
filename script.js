@@ -138,7 +138,7 @@ async function startMemorizeStep(language) {
 function endMemorize() {
     const language = currentPassphraseObject.language;
     
-    // 🚨 変更 1: 記憶時間を秒に変換 🚨
+    // 🚨 変更 1: 記憶時間を秒に変換 🚨 (Date.now() - startTime) の結果はミリ秒なので、1000で割って秒に変換しています
     const memorizeTime = (Date.now() - startTime) / 1000;
     currentExperiment.memorize_time_ms = memorizeTime;
 
@@ -217,7 +217,7 @@ function checkPassphrase() {
             currentErrors++; 
         }
 
-        // 🚨 変更 5: 計測時間を秒に変換 🚨
+        // 🚨 変更 5: 計測時間を秒に変換 🚨 (Date.now() - recallStartTime) の結果はミリ秒なので、1000で割って秒に変換しています
         const recallTime = (Date.now() - recallStartTime) / 1000;
         currentExperiment.recall_time_ms = recallTime;
         
