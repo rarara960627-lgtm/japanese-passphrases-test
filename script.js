@@ -1,19 +1,23 @@
 // script.js
 let participantId = '';
-let currentExperiment = {}; 
+let currentExperiment = {}; 
 let allExperimentResults = []; // すべてのブロック（en/jp）の結果を保持
 
-let currentPassphraseObject = null; 
-let startTime = 0; 
-let recallStartTime = 0; 
+let currentPassphraseObject = null; 
+let startTime = 0; 
+let recallStartTime = 0; 
 let currentErrors = 0;
 const MAX_ERRORS = 5;
+
+// 🚨 修正点 1: 入力ミス記録用の配列を追加 🚨
+let errorLog = []; 
+let currentInputIndex = 0; // 現在入力しているパスフレーズの文字インデックス
+let recallInputTimer = null; // 入力開始からのタイマーID
 
 // !!! 【重要】BASE_API_URLをあなたのPythonAnywhereのURLに置き換える !!!
 // -----------------------------------------------------------------
 const BASE_API_URL = 'https://raimu7260.pythonanywhere.com';
 // -----------------------------------------------------------------
-
 
 // --- UI制御関数 ---
 
@@ -25,6 +29,31 @@ function showStep(id) {
     document.getElementById(id).style.display = 'flex'; // CSSでflexを使用
 }
 
+// 🚨 追加: コピペ防止関数 (index.htmlの<script>タグに追加された前提) 🚨
+function disableCopyPaste(elementId) {
+    const displayElement = document.getElementById(elementId);
+    if (!displayElement) return;
+
+    // 右クリックメニュー (コンテキストメニュー) の禁止
+    displayElement.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
+    // Ctrl+C / Cmd+C (コピー) の禁止
+    // body全体に適用
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+        }
+    });
+    
+    // テキストが選択されたときのコピー処理の禁止
+    document.addEventListener('copy', function(e) {
+         e.preventDefault();
+    });
+}
+
+
 // --- 実験制御関数 ---
 
 function startExperiment() {
@@ -35,7 +64,7 @@ function startExperiment() {
     }
     
     // カウンターバランスはシンプルに、常に英語から開始
-    startMemorizeStep('en'); 
+    startMemorizeStep('en'); 
 }
 
 /** 記憶ステップの開始（パスフレーズ取得と計測開始） */
@@ -45,8 +74,16 @@ async function startMemorizeStep(language) {
     document.getElementById('passphrase-display').textContent = 'パスフレーズを読み込み中...';
     document.getElementById('end-mem-btn').disabled = true;
 
+    // 🚨 修正点 2: 記憶ステップ開始時に errorLog をリセット 🚨
     currentErrors = 0;
-    currentExperiment = { language: language, participant_id: participantId, passphrase_id: 'N/A' }; // 初期化
+    errorLog = [];
+    currentInputIndex = 0;
+
+    currentExperiment = { 
+        language: language, 
+        participant_id: participantId, 
+        passphrase_id: 'N/A' 
+    }; // 初期化
 
     // サーバーから新しいパスフレーズを取得
     try {
@@ -54,7 +91,7 @@ async function startMemorizeStep(language) {
         const data = await response.json();
 
         if (response.ok) {
-            currentPassphraseObject = { 
+            currentPassphraseObject = { 
                 passphrase: data.passphrase,
                 language: data.language
                 // idはサーバー側でランダム生成のためここでは取得しない
@@ -62,6 +99,9 @@ async function startMemorizeStep(language) {
             document.getElementById('passphrase-display').textContent = currentPassphraseObject.passphrase;
             document.getElementById('end-mem-btn').disabled = false;
             
+            // 🚨 追加: パスフレーズ表示時にコピペを禁止する 🚨
+            disableCopyPaste('passphrase-display');
+
             // 時間計測開始
             startTime = Date.now();
             console.log(`[${language}] 記憶計測開始`);
@@ -111,39 +151,96 @@ function startDistractorStep(language) {
 function startRecallStep(language) {
     showStep('recall-step');
     document.getElementById('error-count-display').textContent = MAX_ERRORS;
-    document.getElementById('recall-input').value = ''; 
+    document.getElementById('recall-input').value = ''; 
     document.getElementById('error-message').textContent = '';
     
+    // 🚨 修正点 3: 入力欄にイベントリスナーを追加 🚨
+    const recallInput = document.getElementById('recall-input');
+    recallInput.removeEventListener('input', handleRecallInput); // 重複防止
+    recallInput.addEventListener('input', handleRecallInput);
+    
+    currentInputIndex = 0; // 入力インデックスをリセット
+    recallInput.focus(); // 入力欄にフォーカス
+    
     // 再生時間計測開始
-    recallStartTime = Date.now(); 
+    recallStartTime = Date.now(); 
     console.log(`[${language}] 再生計測開始`);
 }
+
+/** 🚨 修正点 4: 入力イベントを捕捉し、ミスをリアルタイムで記録する関数 🚨 */
+function handleRecallInput(e) {
+    const userInput = e.target.value;
+    const expectedPassphrase = currentPassphraseObject.passphrase;
+    
+    // 現在の入力文字数
+    const inputLength = userInput.length;
+    
+    // 現在の入力インデックス
+    const currentIndex = inputLength - 1;
+    
+    if (currentIndex >= 0) {
+        const inputChar = userInput[currentIndex];
+        const expectedChar = expectedPassphrase[currentIndex];
+
+        if (inputChar !== expectedChar) {
+            // ミスが発生した場合
+            const errorTime = Date.now() - recallStartTime;
+            
+            // エラーログに記録
+            errorLog.push({
+                time_ms: errorTime,
+                input_char: inputChar,
+                expected_char: expectedChar,
+                current_input_index: currentIndex,
+                current_value: userInput.substring(0, currentIndex) + '...' // ミス時点の入力を記録 (部分的に)
+            });
+            
+            // 視覚的なエラーフィードバック
+            document.getElementById('error-message').textContent = "❌ 間違いです！";
+            document.getElementById('error-message').style.color = 'red';
+            
+            // エラーカウントは 'checkPassphrase' でまとめて管理するため、ここではログ記録のみ
+            console.log(`[ERROR] Char: ${inputChar}, Expected: ${expectedChar}, Time: ${errorTime}ms`);
+
+        } else {
+            // 正しい入力の場合、エラーメッセージをクリア
+            document.getElementById('error-message').textContent = "";
+        }
+    }
+}
+
 
 /** 確認ボタンが押された時の処理 (再生テスト) */
 function checkPassphrase() {
     const userInput = document.getElementById('recall-input').value.trim();
     // スペースの有無も判定に含めるため trim() のみ使用
-    const isCorrect = (userInput === currentPassphraseObject.passphrase);
+    const expectedPassphrase = currentPassphraseObject.passphrase;
+    const isCorrect = (userInput === expectedPassphrase);
     const language = currentPassphraseObject.language;
 
+    // 現在のエラーカウントはerrorLogのサイズでなく、試行回数ベースで管理
+    
     if (isCorrect || currentErrors >= MAX_ERRORS - 1) { // 最後の試行または正解
         
         if (!isCorrect && currentErrors >= MAX_ERRORS - 1) {
             // 最後の試行も失敗
-            currentErrors++; 
+            currentErrors++; 
         }
 
         // 結果を確定
         const recallTime = Date.now() - recallStartTime;
         currentExperiment.recall_time_ms = recallTime;
-        currentExperiment.error_count = currentErrors;
+        currentExperiment.error_count = errorLog.length; // 🚨 修正点 5: エラーカウントは errorLog のサイズを使用 🚨
         currentExperiment.is_success = isCorrect;
         currentExperiment.passphrase = currentPassphraseObject.passphrase;
+        
+        // 🚨 修正点 6: error_details として errorLog を追加 🚨
+        currentExperiment.error_details = errorLog;
         
         allExperimentResults.push(currentExperiment); // 結果をリストに追加
         
         const nextLanguage = (language === 'en') ? 'jp' : 'en';
-
+        
         // 次のブロックへ移行、または終了
         if (nextLanguage === 'jp') {
              startMemorizeStep('jp');
@@ -153,7 +250,7 @@ function checkPassphrase() {
         }
         
     } else {
-        // 間違い
+        // 間違い (試行回数を増やす)
         currentErrors++;
         document.getElementById('error-count-display').textContent = MAX_ERRORS - currentErrors;
         document.getElementById('recall-input').value = ''; // 入力欄をクリア
@@ -165,7 +262,7 @@ function checkPassphrase() {
 
 /** 最終データをサーバーに送信する処理 */
 async function handleFinalDataSubmit() {
-    const API_URL = `${BASE_API_URL}/api/save-result`; 
+    const API_URL = `${BASE_API_URL}/api/save-result`; 
     const messageDisplay = document.getElementById('finish-message');
     
     messageDisplay.innerHTML = '<p>データ送信中です。しばらくお待ちください...</p>';
@@ -176,7 +273,7 @@ async function handleFinalDataSubmit() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(allExperimentResults) 
+            body: JSON.stringify(allExperimentResults) 
         });
 
         if (response.ok) {
@@ -193,4 +290,3 @@ async function handleFinalDataSubmit() {
     }
 
 }
-
