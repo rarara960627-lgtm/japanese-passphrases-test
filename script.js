@@ -1,7 +1,7 @@
 // script.js
 let participantId = '';
 let currentExperiment = {}; 
-let allExperimentResults = []; // すべてのブロック（en/jp）の結果を保持
+let allExperimentResults = []; // すべてのブロック（en/jp/pokemon）の結果を保持
 
 let currentPassphraseObject = null; 
 let startTime = 0; 
@@ -18,6 +18,7 @@ let recallInputTimer = null; // 入力開始からのタイマーID
 // -----------------------------------------------------------------
 const BASE_API_URL = 'https://raimu7260.pythonanywhere.com';
 // -----------------------------------------------------------------
+
 
 // --- UI制御関数 ---
 
@@ -63,18 +64,34 @@ function startExperiment() {
         return;
     }
     
-    // カウンターバランスはシンプルに、常に英語から開始
+    // 🚨 修正点 2: 実験は英語から開始 🚨
     startMemorizeStep('en'); 
+}
+
+/** 言語コードに応じて表示名を返すヘルパー関数 */
+function getLanguageDisplayName(languageCode) {
+    switch (languageCode) {
+        case 'en':
+            return '英語（Diceware）';
+        case 'jp':
+            return '日本語（Diceware）';
+        case 'pokemon':
+            // 🚨 新規追加: ポケモンブロックの表示名 🚨
+            return '日本語（ポケモン）';
+        default:
+            return '不明';
+    }
 }
 
 /** 記憶ステップの開始（パスフレーズ取得と計測開始） */
 async function startMemorizeStep(language) {
     showStep('memorize-step');
-    document.getElementById('current-language').textContent = (language === 'en' ? '英語' : '日本語');
+    // 🚨 修正点 3: getLanguageDisplayNameを使用 🚨
+    document.getElementById('current-language').textContent = getLanguageDisplayName(language);
     document.getElementById('passphrase-display').textContent = 'パスフレーズを読み込み中...';
     document.getElementById('end-mem-btn').disabled = true;
 
-    // 🚨 修正点 2: 記憶ステップ開始時に errorLog をリセット 🚨
+    // 記憶ステップ開始時に errorLog をリセット
     currentErrors = 0;
     errorLog = [];
     currentInputIndex = 0;
@@ -94,12 +111,11 @@ async function startMemorizeStep(language) {
             currentPassphraseObject = { 
                 passphrase: data.passphrase,
                 language: data.language
-                // idはサーバー側でランダム生成のためここでは取得しない
             };
             document.getElementById('passphrase-display').textContent = currentPassphraseObject.passphrase;
             document.getElementById('end-mem-btn').disabled = false;
             
-            // 🚨 追加: パスフレーズ表示時にコピペを禁止する 🚨
+            // パスフレーズ表示時にコピペを禁止する
             disableCopyPaste('passphrase-display');
 
             // 時間計測開始
@@ -154,7 +170,7 @@ function startRecallStep(language) {
     document.getElementById('recall-input').value = ''; 
     document.getElementById('error-message').textContent = '';
     
-    // 🚨 修正点 3: 入力欄にイベントリスナーを追加 🚨
+    // 入力欄にイベントリスナーを追加
     const recallInput = document.getElementById('recall-input');
     recallInput.removeEventListener('input', handleRecallInput); // 重複防止
     recallInput.addEventListener('input', handleRecallInput);
@@ -167,7 +183,7 @@ function startRecallStep(language) {
     console.log(`[${language}] 再生計測開始`);
 }
 
-/** 🚨 修正点 4: 入力イベントを捕捉し、ミスをリアルタイムで記録する関数 🚨 */
+/** 入力イベントを捕捉し、ミスをリアルタイムで記録する関数 */
 function handleRecallInput(e) {
     const userInput = e.target.value;
     const expectedPassphrase = currentPassphraseObject.passphrase;
@@ -182,7 +198,8 @@ function handleRecallInput(e) {
         const inputChar = userInput[currentIndex];
         const expectedChar = expectedPassphrase[currentIndex];
 
-        if (inputChar !== expectedChar) {
+        // 期待される文字長を超えていないか、かつ文字が一致しないかを確認
+        if (currentIndex < expectedPassphrase.length && inputChar !== expectedChar) {
             // ミスが発生した場合
             const errorTime = Date.now() - recallStartTime;
             
@@ -190,22 +207,22 @@ function handleRecallInput(e) {
             errorLog.push({
                 time_ms: errorTime,
                 input_char: inputChar,
-                expected_char: expectedChar,
+                expected_char: expectedChar || 'EOS', // 期待される文字がなければ 'EOS' (End of String)
                 current_input_index: currentIndex,
-                current_value: userInput.substring(0, currentIndex) + '...' // ミス時点の入力を記録 (部分的に)
+                current_value: userInput // ミス時点の入力を記録
             });
             
             // 視覚的なエラーフィードバック
-            document.getElementById('error-message').textContent = "❌ 間違いです！";
+            document.getElementById('error-message').textContent = "❌ 文字が異なります！";
             document.getElementById('error-message').style.color = 'red';
             
-            // エラーカウントは 'checkPassphrase' でまとめて管理するため、ここではログ記録のみ
             console.log(`[ERROR] Char: ${inputChar}, Expected: ${expectedChar}, Time: ${errorTime}ms`);
 
-        } else {
+        } else if (inputChar === expectedChar) {
             // 正しい入力の場合、エラーメッセージをクリア
             document.getElementById('error-message').textContent = "";
         }
+        // 長すぎる入力は checkPassphrase で処理されるため、ここでは無視
     }
 }
 
@@ -230,20 +247,28 @@ function checkPassphrase() {
         // 結果を確定
         const recallTime = Date.now() - recallStartTime;
         currentExperiment.recall_time_ms = recallTime;
-        currentExperiment.error_count = errorLog.length; // 🚨 修正点 5: エラーカウントは errorLog のサイズを使用 🚨
+        currentExperiment.error_count = errorLog.length; // エラーカウントは errorLog のサイズを使用 
         currentExperiment.is_success = isCorrect;
         currentExperiment.passphrase = currentPassphraseObject.passphrase;
         
-        // 🚨 修正点 6: error_details として errorLog を追加 🚨
+        // error_details として errorLog を追加
         currentExperiment.error_details = errorLog;
         
         allExperimentResults.push(currentExperiment); // 結果をリストに追加
         
-        const nextLanguage = (language === 'en') ? 'jp' : 'en';
-        
+        let nextLanguage;
+        // 🚨 修正点 4: 実験フローの変更（en -> jp -> pokemon -> finish） 🚨
+        if (language === 'en') {
+            nextLanguage = 'jp';
+        } else if (language === 'jp') {
+            nextLanguage = 'pokemon';
+        } else {
+            nextLanguage = 'finish'; // 'pokemon' の次は終了
+        }
+
         // 次のブロックへ移行、または終了
-        if (nextLanguage === 'jp') {
-             startMemorizeStep('jp');
+        if (nextLanguage !== 'finish') {
+             startMemorizeStep(nextLanguage);
         } else {
              showStep('finish-step');
              handleFinalDataSubmit(); // 全ブロック完了後、データ送信
