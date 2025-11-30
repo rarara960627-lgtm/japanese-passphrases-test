@@ -69,11 +69,11 @@ function startExperiment() {
 function getLanguageDisplayName(languageCode) {
     switch (languageCode) {
         case 'en':
-            return '英語（Diceware）';
+            return '英語パスフレーズ'; // 修正後
         case 'jp':
-            return '日本語（Diceware）';
+            return '日本語パスフレーズ'; // 修正後
         case 'pokemon':
-            return '日本語（ポケモン）';
+            return 'ポケモンパスフレーズ'; // 修正後
         default:
             return '不明';
     }
