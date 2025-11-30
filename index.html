@@ -4,62 +4,513 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卒業研究 - 記憶負荷実験</title>
-    <link rel="stylesheet" href="style.css"> 
+    <!-- Tailwind CSSを読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* フォントの指定と共通スタイル */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #f3f4f6; /* Gray-100 */
+        }
+        #experiment-container {
+            max-width: 90%;
+            width: 768px; /* md:max-w-xl */
+            min-height: 500px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 1rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .step {
+            display: none;
+            width: 100%;
+            text-align: center;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px; /* 最小高さを設定 */
+        }
+        .step.active {
+            display: flex;
+        }
+        .highlight-text {
+            color: #10B981; /* Emerald-500 */
+            font-weight: 700;
+        }
+        .timer-info {
+            color: #6b7280; /* Gray-500 */
+            margin-top: 1rem;
+        }
+    </style>
 </head>
-<body>
+<body class="p-4">
 
     <div id="experiment-container">
-        <h1>記憶負荷実験</h1>
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-8 border-b-2 border-indigo-600 pb-2">記憶負荷実験</h1>
 
+        <!-- 1. 導入ステップ -->
         <section id="intro-step" class="step active">
-            <h2>参加者情報</h2>
-            <p>ご協力ありがとうございます。以下のフォームにあなたの**参加者ID**を入力してください。</p>
-            <div class="input-group">
-                <label for="participant-id">参加者ID (例: P001):</label>
-                <input type="text" id="participant-id" placeholder="IDを入力" required>
+            <h2 class="text-2xl font-semibold mb-6 text-indigo-700">参加者情報</h2>
+            <p class="text-gray-700 mb-8">ご協力ありがとうございます。以下のフォームにあなたの<span class="highlight-text">参加者ID</span>を入力してください。</p>
+            <div class="w-full max-w-sm">
+                <label for="participant-id" class="block text-left text-sm font-medium text-gray-700 mb-2">参加者ID (例: P001):</label>
+                <input type="text" id="participant-id" placeholder="IDを入力" required class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-center text-lg">
             </div>
-            <button onclick="startExperiment()">実験を開始する</button>
+            <button onclick="startExperiment()" class="mt-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition duration-150 shadow-md">
+                実験を開始する
+            </button>
         </section>
 
+        <!-- 2. 記憶ステップ -->
         <section id="memorize-step" class="step">
-            <h2>【記憶フェーズ】パスフレーズを記憶してください</h2>
-            <p>以下の**<span id="current-language"></span>語**のパスフレーズを、<span class="highlight-text">完全に覚えるまで</span>記憶してください。</p>
+            <h2 class="text-2xl font-semibold mb-6 text-green-700">【記憶フェーズ】パスフレーズを記憶してください</h2>
+            <p class="text-gray-700 mb-6">以下の<span id="current-language" class="font-bold"></span>のパスフレーズを、<span class="highlight-text">完全に覚えるまで</span>記憶してください。（コピペ不可）</p>
             
-            <div id="passphrase-display-box">
-                <p id="passphrase-display">パスフレーズを読み込み中...</p>
+            <div id="passphrase-display-box" class="bg-gray-100 p-8 rounded-xl shadow-inner max-w-full overflow-auto">
+                <p id="passphrase-display" class="text-3xl font-mono text-gray-800 break-words">パスフレーズを読み込み中...</p>
             </div>
 
-            <button onclick="endMemorize()" id="end-mem-btn" disabled>記憶完了</button>
+            <button onclick="endMemorize()" id="end-mem-btn" disabled class="mt-8 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition duration-150 shadow-md disabled:opacity-50">
+                記憶完了
+            </button>
             <p class="timer-info">※このボタンを押すまでの時間を計測します。</p>
         </section>
 
+        <!-- 3. 妨害ステップ (計算タスク) -->
         <section id="distractor-step" class="step">
-            <h2>【妨害タスク】</h2>
-            <p>集中して以下の問題を解いてください。**30秒後**に自動で次のステップに進みます。</p>
-            <div class="task-content">
-                <p>以下の計算をしてください: <span class="highlight-text">34 + 57 = ?</span></p>
-                <p>残り時間: <span id="distractor-timer">30</span>秒</p>
+            <h2 class="text-2xl font-semibold mb-6 text-red-700">【妨害タスク】30秒間の計算</h2>
+            <p class="text-gray-700 mb-4">集中して以下の計算を解いてください。正解するたびに次の計算に進みます。</p>
+            <div class="task-content bg-red-50 border border-red-200 p-6 rounded-xl shadow-lg w-full max-w-sm">
+                <p class="text-gray-600 mb-2">残り時間: <span id="distractor-timer" class="text-2xl font-extrabold text-red-600">30</span>秒</p>
+                
+                <p class="text-xl font-bold mt-4">現在の数字:</p>
+                <p id="distractor-current-number" class="text-5xl font-extrabold text-red-700 mb-4">???</p>
+                <p class="text-lg mb-4 text-gray-800">常に **3** を引き続けてください。</p>
+                
+                <p id="distractor-message" class="mb-4 font-medium text-center text-sm min-h-[1.5rem]"></p>
+                
+                <input type="number" id="distractor-input" placeholder="次の数字を入力" class="p-3 border border-gray-400 rounded-lg text-center text-xl w-full max-w-xs mb-4 focus:ring-red-500 focus:border-red-500">
+                
+                <button onclick="checkDistractorInput()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition duration-150 shadow-md">
+                    確認
+                </button>
             </div>
         </section>
 
+        <!-- 4. 再生ステップ -->
         <section id="recall-step" class="step">
-            <h2>【再生フェーズ】パスフレーズの再入力</h2>
-            <p>記憶したパスフレーズを、正確に入力してください。</p>
-            <p class="error-status">残りエラー許容回数: <span id="error-count-display">5</span>回</p>
-            <input type="text" id="recall-input" placeholder="スペース区切りで入力してください" required>
-            <button onclick="checkPassphrase()" id="check-btn">確認する</button>
-            <p id="error-message" class="error"></p>
+            <h2 class="text-2xl font-semibold mb-6 text-blue-700">【再生フェーズ】パスフレーズの再入力</h2>
+            <p class="text-gray-700 mb-4">記憶したパスフレーズを、正確に入力してください。</p>
+            <div class="w-full max-w-lg">
+                <p class="text-sm font-medium text-gray-600 mb-2">残りエラー許容回数: <span id="error-count-display" class="text-xl font-bold text-red-600">5</span>回</p>
+                <input type="text" id="recall-input" placeholder="スペース区切りで入力してください" required class="w-full p-4 border-2 border-blue-300 rounded-lg shadow-inner text-lg focus:ring-blue-500 focus:border-blue-500">
+                <button onclick="checkPassphrase()" id="check-btn" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-150 shadow-md">
+                    確認する
+                </button>
+                <p id="error-message" class="error text-red-500 mt-4 font-medium min-h-[1.5rem]"></p>
+            </div>
         </section>
 
+        <!-- 5. 終了ステップ -->
         <section id="finish-step" class="step">
-            <h2>実験終了です</h2>
-            <div id="finish-message">
-                <p>データ送信処理中です...</p>
+            <h2 class="text-2xl font-semibold mb-6 text-gray-700">実験終了です</h2>
+            <div id="finish-message" class="p-6 bg-gray-100 rounded-xl w-full max-w-md">
+                <p class="text-lg text-gray-600">データ送信処理中です...</p>
             </div>
         </section>
         
     </div>
 
-    <script src="script.js"></script>
+<script>
+// script.js - パスフレーズ実験のクライアント側制御スクリプト
+
+let participantId = '';
+let currentExperiment = {}; 
+let allExperimentResults = []; // すべてのブロック（en/jp/pokemon）の結果を保持
+
+let currentPassphraseObject = null; 
+let startTime = 0; 
+let recallStartTime = 0; 
+// 潜伏時間計測開始用の時刻
+let recallLatencyStartTime = 0;
+let currentErrors = 0;
+const MAX_ERRORS = 5;
+
+let errorLog = []; 
+
+// 【妨害タスク用変数】
+let distractorTimerId;
+let currentDistractorValue = 0; // 現在の計算値
+let distractorErrors = 0; // 妨害タスクでの誤答回数（今回はデータ送信に含めないが、拡張性のため保持）
+
+
+// !!! 【重要】BASE_API_URLをあなたのPythonAnywhereのURLに置き換える !!!
+// -----------------------------------------------------------------
+const BASE_API_URL = 'https://raimu7260.pythonanywhere.com';
+// -----------------------------------------------------------------
+
+
+// --- UI制御関数 ---
+
+/** 特定のステップIDを表示し、他を非表示にする */
+function showStep(id) {
+    document.querySelectorAll('.step').forEach(step => {
+        step.style.display = 'none';
+    });
+    // flexを使用して要素を中央に配置（デザインはindex.html依存）
+    document.getElementById(id).style.display = 'flex'; 
+}
+
+/** コピー＆ペーストを禁止し、パスフレーズの不正取得を防ぐ */
+function disableCopyPaste(elementId) {
+    const displayElement = document.getElementById(elementId);
+    if (!displayElement) return;
+
+    displayElement.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+C / Cmd+C (コピー) を禁止
+        if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+        }
+    });
+    
+    document.addEventListener('copy', function(e) {
+         e.preventDefault();
+    });
+}
+
+
+// --- 実験制御関数 ---
+
+function startExperiment() {
+    participantId = document.getElementById('participant-id').value.trim();
+    if (!participantId || participantId.length < 3) {
+        // alert() の代わりにカスタムモーダルまたはメッセージボックスを使用
+        // 今回はシンプルにconsole.errorと視覚的フィードバックのみ
+        const idInput = document.getElementById('participant-id');
+        idInput.classList.add('border-red-500', 'ring-red-500');
+        setTimeout(() => idInput.classList.remove('border-red-500', 'ring-red-500'), 2000);
+        console.error("参加者IDを正しく入力してください。");
+        return;
+    }
+    
+    // 実験は英語から開始
+    startMemorizeStep('en'); 
+}
+
+/** 言語コードに応じて表示名を返すヘルパー関数 (修正版) */
+function getLanguageDisplayName(languageCode) {
+    switch (languageCode) {
+        case 'en':
+            return '英語パスフレーズ'; 
+        case 'jp':
+            return '日本語パスフレーズ'; 
+        case 'pokemon':
+            return 'ポケモンパスフレーズ'; 
+        default:
+            return '不明';
+    }
+}
+
+/** 記憶ステップの開始（パスフレーズ取得と計測開始） */
+async function startMemorizeStep(language) {
+    showStep('memorize-step');
+    document.getElementById('current-language').textContent = getLanguageDisplayName(language);
+    document.getElementById('passphrase-display').textContent = 'パスフレーズを読み込み中...';
+    document.getElementById('end-mem-btn').disabled = true;
+
+    // 記憶ステップ開始時に errorLog と試行回数をリセット
+    currentErrors = 0;
+    errorLog = [];
+
+    currentExperiment = { 
+        language: language, 
+        participant_id: participantId, 
+        passphrase_id: 'N/A',
+        recall_latency_s: null // 潜伏時間用のデータ項目を初期化
+    }; 
+
+    // サーバーから新しいパスフレーズを取得
+    try {
+        const response = await fetch(`${BASE_API_URL}/api/generate-passphrase/${language}`);
+        const data = await response.json();
+
+        if (response.ok) {
+            currentPassphraseObject = { 
+                passphrase: data.passphrase,
+                language: data.language
+            };
+            document.getElementById('passphrase-display').textContent = currentPassphraseObject.passphrase;
+            document.getElementById('end-mem-btn').disabled = false;
+            
+            // パスフレーズ表示時にコピペを禁止
+            disableCopyPaste('passphrase-display');
+
+            // 記憶時間計測開始
+            startTime = Date.now();
+            console.log(`[${language}] 記憶計測開始`);
+
+        } else {
+            document.getElementById('passphrase-display').textContent = `エラー: ${data.error}`;
+            console.error(`パスフレーズの取得に失敗しました: ${data.error}`);
+        }
+    } catch (error) {
+        console.error("サーバーとの通信に失敗しました。URLと接続を確認してください。", error);
+        showStep('intro-step'); // エラー時は導入に戻す
+    }
+}
+
+/** 記憶完了ボタンが押された時の処理 */
+function endMemorize() {
+    // 記憶時間を秒に変換 (Date.now() - startTime) の結果はミリ秒なので、1000で割って秒に変換
+    const memorizeTime = (Date.now() - startTime) / 1000;
+    // 単位は「ms」だが、中身は「秒」
+    currentExperiment.memorize_time_ms = memorizeTime; 
+
+    showStep('distractor-step');
+    startDistractorStep(currentPassphraseObject.language);
+}
+
+// --- 妨害タスク関連 ---
+
+/** 妨害タスクの開始 (30秒タイマーと計算タスクの開始) */
+function startDistractorStep(language) {
+    let timeLeft = 30;
+    document.getElementById('distractor-timer').textContent = timeLeft;
+    
+    // 1. 3桁の初期値をランダムに生成 (100から999)
+    currentDistractorValue = Math.floor(Math.random() * (999 - 100 + 1)) + 100;
+    document.getElementById('distractor-current-number').textContent = currentDistractorValue;
+    document.getElementById('distractor-input').value = '';
+    document.getElementById('distractor-message').textContent = '次の数字を入力し、[確認]を押してください。';
+    document.getElementById('distractor-input').focus();
+    distractorErrors = 0;
+
+    // 2. 30秒タイマーを開始
+    distractorTimerId = setInterval(() => {
+        timeLeft--;
+        document.getElementById('distractor-timer').textContent = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(distractorTimerId);
+            startRecallStep(language); // 再生ステップへ移行
+        }
+    }, 1000); // 1秒ごとに更新
+}
+
+/** 妨害タスクの確認ボタンが押された時の処理 */
+function checkDistractorInput() {
+    const inputElement = document.getElementById('distractor-input');
+    const userInput = parseInt(inputElement.value.trim(), 10);
+    const expectedValue = currentDistractorValue - 3;
+    const messageDisplay = document.getElementById('distractor-message');
+    
+    // ユーザー入力が数字であり、かつ期待値と一致するかチェック
+    if (!isNaN(userInput) && userInput === expectedValue) {
+        // 正解
+        currentDistractorValue = userInput; // 現在の値を更新
+        document.getElementById('distractor-current-number').textContent = currentDistractorValue; // 画面を更新
+        inputElement.value = ''; // 入力欄をクリア
+        messageDisplay.textContent = '✅ 正解！次の数字を入力してください。';
+        messageDisplay.style.color = '#10B981'; // Tailwind: emerald-500
+    } else {
+        // 不正解 or 無効な入力
+        distractorErrors++;
+        messageDisplay.textContent = '❌ 間違いです。もう一度計算してください。';
+        messageDisplay.style.color = '#EF4444'; // Tailwind: red-500
+        inputElement.value = ''; // 入力欄をクリア
+    }
+    inputElement.focus(); // 入力欄にフォーカスを戻す
+}
+
+// --- 再生タスク関連 ---
+
+/** 潜伏時間を計測し、イベントリスナーを削除するハンドラ (最初のキー入力時のみ実行) */
+const handleFirstKey = (event) => {
+    // 潜伏時間（秒）を計算: (現在の時刻 - 計測開始時刻) / 1000
+    const latency = (Date.now() - recallLatencyStartTime) / 1000;
+    currentExperiment.recall_latency_s = latency;
+    console.log(`[${currentPassphraseObject.language}] 潜伏時間: ${latency.toFixed(3)}s`);
+
+    // 潜伏時間の計測は1回きりなので、イベントリスナーを削除
+    document.getElementById('recall-input').removeEventListener('keydown', handleFirstKey);
+};
+
+/** 再生ステップの開始 */
+function startRecallStep(language) {
+    showStep('recall-step');
+    document.getElementById('error-count-display').textContent = MAX_ERRORS;
+    document.getElementById('recall-input').value = ''; 
+    document.getElementById('error-message').textContent = '';
+    
+    // 以前の潜伏時間計測用のリスナーが残っている可能性があるので削除
+    document.getElementById('recall-input').removeEventListener('keydown', handleFirstKey);
+    
+    document.getElementById('recall-input').focus(); // 入力欄にフォーカス
+    
+    // 再生時間計測開始
+    recallStartTime = Date.now(); 
+    console.log(`[${language}] 再生計測開始`);
+
+    // 潜伏時間計測の開始
+    recallLatencyStartTime = Date.now();
+    // 最初のキー入力で潜伏時間を記録するためのイベントリスナーを追加
+    document.getElementById('recall-input').addEventListener('keydown', handleFirstKey, { once: true });
+}
+
+
+// --- ヘルパー関数: スペースを正規化して比較 ---
+function normalizePassphrase(passphrase) {
+    // 1. 全角スペースを半角に置換
+    // 2. すべてのスペースを削除（単語の並び順のみをチェック）
+    // 目的: 半角・全角スペースを許容し、単語の順序のみをチェックする
+    return passphrase
+        .replace(/　/g, ' ') // 全角スペースを半角スペースに変換
+        .replace(/\s+/g, '') // 連続するスペース、または残ったスペースをすべて削除 
+        .trim();
+}
+
+
+/** 確認ボタンが押された時の処理 (再生テスト) */
+function checkPassphrase() {
+    const userInput = document.getElementById('recall-input').value.trim();
+    const expectedPassphrase = currentPassphraseObject.passphrase;
+    const language = currentPassphraseObject.language;
+
+    // 正誤判定は、スペースを無視した文字列で比較
+    const normalizedUserInput = normalizePassphrase(userInput);
+    const normalizedExpected = normalizePassphrase(expectedPassphrase);
+
+    // 正しい入力か、または規定の試行回数に達したかをチェック
+    const isCorrect = (normalizedUserInput === normalizedExpected);
+    
+    // 成功または最終試行（失敗）時の処理
+    if (isCorrect || currentErrors >= MAX_ERRORS - 1) { 
+        
+        if (!isCorrect && currentErrors >= MAX_ERRORS - 1) {
+            // 最後の試行も失敗した場合、試行回数をインクリメント
+            currentErrors++; 
+        }
+
+        // 💡 再生時間は、正解が確認された時点、または最終試行が終わった時点で記録
+        const recallTime = (Date.now() - recallStartTime) / 1000;
+        currentExperiment.recall_time_ms = recallTime;
+        
+        // 潜伏時間計測用のリスナーを削除（保険）
+        document.getElementById('recall-input').removeEventListener('keydown', handleFirstKey);
+
+        // 失敗した場合、最後の試行をログに記録
+        if (!isCorrect) {
+             errorLog.push({
+                 // 記録するのは、想起開始からの経過秒数
+                 time_s: recallTime, 
+                 input_value: userInput, // ユーザーの生入力
+                 attempt: currentErrors // 試行回数
+             });
+        }
+        
+        // 潜伏時間が記録されていない場合（キーを押さずに確認ボタンを押した場合など）は 0 を記録
+        if (currentExperiment.recall_latency_s === null) {
+            currentExperiment.recall_latency_s = 0;
+        }
+
+        // error_count は、失敗して記録されたログの数
+        currentExperiment.error_count = errorLog.length;
+        currentExperiment.is_success = isCorrect;
+        currentExperiment.passphrase = currentPassphraseObject.passphrase;
+        currentExperiment.error_details = errorLog;
+        
+        allExperimentResults.push(currentExperiment); // 結果をリストに追加
+        
+        let nextLanguage;
+        // 実験フローの定義（en -> jp -> pokemon -> finish）
+        if (language === 'en') {
+            nextLanguage = 'jp';
+        } else if (language === 'jp') {
+            nextLanguage = 'pokemon';
+        } else {
+            nextLanguage = 'finish'; // 'pokemon' の次は終了
+        }
+
+
+        // 次のブロックへ移行、または終了
+        if (nextLanguage !== 'finish') {
+             startMemorizeStep(nextLanguage);
+        } else {
+             showStep('finish-step');
+             handleFinalDataSubmit(); // 全ブロック完了後、データ送信
+        }
+        
+    } else {
+        // 間違い (試行回数を増やす)
+        currentErrors++;
+        
+        // 記録するのは、想起開始からの経過秒数
+        const errorTime = (Date.now() - recallStartTime) / 1000;
+        errorLog.push({
+            time_s: errorTime, // 確認ボタンを押した時点の経過秒数
+            input_value: userInput, // ユーザーの生入力
+            attempt: currentErrors // 試行回数
+        });
+        
+        document.getElementById('error-count-display').textContent = MAX_ERRORS - currentErrors;
+        document.getElementById('recall-input').value = ''; // 入力欄をクリア
+        
+        // エラーメッセージ
+        document.getElementById('error-message').textContent = `❌ 間違いです。再入力してください。残り試行回数: ${MAX_ERRORS - currentErrors}`;
+        document.getElementById('error-message').style.color = 'red';
+
+        // 入力欄にフォーカスを戻す
+        document.getElementById('recall-input').focus(); 
+    }
+}
+
+// --- データ送信 ---
+
+/** 最終データをサーバーに送信する処理 */
+async function handleFinalDataSubmit() {
+    const API_URL = `${BASE_API_URL}/api/save-result`; 
+    const messageDisplay = document.getElementById('finish-message');
+    
+    messageDisplay.innerHTML = '<p class="text-lg text-gray-600">データ送信中です。しばらくお待ちください...</p>';
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(allExperimentResults) 
+        });
+
+        if (response.ok) {
+            console.log('データの自動保存に成功しました！');
+            messageDisplay.innerHTML = '<h2 class="text-2xl font-bold text-green-600 mb-2">✅ データ保存完了</h2><p class="text-gray-700">実験にご協力いただき、ありがとうございました。すべてのデータが研究者に送信されました。</p>';
+        } else {
+            const errorData = await response.json();
+            console.error('保存失敗:', errorData.error);
+            messageDisplay.innerHTML = `<h2 class="text-2xl font-bold text-red-600 mb-2">❌ データ保存失敗</h2><p class="text-gray-700">自動保存に失敗しました。研究者にこの画面とエラーコード: ${response.status} をご連絡ください。</p>`;
+        }
+    } catch (error) {
+        console.error('ネットワークエラー:', error);
+        messageDisplay.innerHTML = '<h2 class="text-2xl font-bold text-red-600 mb-2">❌ 通信エラー</h2><p class="text-gray-700">サーバーとの接続エラーが発生しました。インターネット接続を確認し、研究者に連絡してください。</p>';
+    }
+
+}
+
+// 外部公開が必要な関数を window オブジェクトに追加
+window.startExperiment = startExperiment;
+window.endMemorize = endMemorize;
+window.checkDistractorInput = checkDistractorInput;
+window.checkPassphrase = checkPassphrase;
+</script>
+
 </body>
 </html>
